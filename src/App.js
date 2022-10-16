@@ -18,7 +18,6 @@ const App = () => {
     setSqFtPerPerson(totalSqFeet / ppl);
   }, [totalSqFeet, ppl]);
 
-  console.log({ sqFtPerPerson, hungerLevel });
   return (
     <Box sx={{ gap: 2, flexDirection: "row", margin: 2 }}>
       <div style={{ fontSize: 64 }}>🍕🧮</div>
@@ -50,9 +49,7 @@ const App = () => {
       <Box sx={{ margin: 1 }}>
         We are{" "}
         <Select
-          label="We are"
           onChange={(e) => setHungerLevel(parseInt(e.target.value || 0))}
-          labelId="hungerLabel"
           id="select"
           value={hungerLevel}
         >
