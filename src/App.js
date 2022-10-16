@@ -82,7 +82,7 @@ const App = () => {
       {sqFtPerPerson < hungerLevel - 0.3 && (
         <Box>
           <div>
-            We recommend <strong>more</strong> pizza.
+            We recommend <strong>more</strong> pizza 📈
           </div>
         </Box>
       )}
@@ -90,7 +90,7 @@ const App = () => {
       {sqFtPerPerson > hungerLevel + 0.3 && (
         <Box>
           <div>
-            We recommend <strong>less</strong> pizza.
+            We recommend <strong>less</strong> pizza ⬇️
           </div>
         </Box>
       )}
@@ -98,7 +98,7 @@ const App = () => {
       {sqFtPerPerson - hungerLevel < 0.3 && (
         <Box>
           <div>
-            That's <strong>a good amount</strong> of pizza.
+            That's <strong>a good amount</strong> of pizza 👍
           </div>
         </Box>
       )}
