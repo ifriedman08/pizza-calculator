@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
-import { TextField, MenuItem, Select, InputAdornment } from "@mui/material";
+import { TextField, InputAdornment } from "@mui/material";
 
 const App = () => {
   const [totalSqFeet, setTotalSqFeet] = useState();
   const [ppl, setPpl] = useState();
   const [numberOfPizzas, setNumberOfPizzas] = useState(1);
-  const [radius, setRadius] = useState();
-  const [hungerLevel, setHungerLevel] = useState(1.5);
+  const [diameter, setDiameter] = useState();
+
   const [sqFtPerPerson, setSqFtPerPerson] = useState();
 
   useEffect(() => {
-    setTotalSqFeet(Math.PI * (radius / 12) ** 2 * numberOfPizzas);
-  }, [radius, numberOfPizzas]);
+    setTotalSqFeet(Math.PI * (diameter / 24) ** 2 * numberOfPizzas);
+  }, [diameter, numberOfPizzas]);
 
   useEffect(() => {
     setSqFtPerPerson(totalSqFeet / ppl);
@@ -37,26 +37,13 @@ const App = () => {
       </Box>
       <Box sx={{ margin: 1 }}>
         <TextField
-          onChange={(e) => setRadius(parseInt(e.target.value || 0))}
+          onChange={(e) => setDiameter(parseInt(e.target.value || 0))}
           InputProps={{
             endAdornment: <InputAdornment position="end">in.</InputAdornment>,
           }}
           type="number"
-          label="pizza radius"
+          label="pizza diameter"
         />
-      </Box>
-
-      <Box sx={{ margin: 1 }}>
-        We are{" "}
-        <Select
-          onChange={(e) => setHungerLevel(parseInt(e.target.value || 0))}
-          id="select"
-          value={hungerLevel}
-        >
-          <MenuItem value={1}>kinda hungry</MenuItem>
-          <MenuItem value={1.5}>hungry</MenuItem>
-          <MenuItem value={2}>hella hungry</MenuItem>
-        </Select>
       </Box>
 
       {!!totalSqFeet && (
@@ -76,26 +63,10 @@ const App = () => {
         </Box>
       )}
 
-      {sqFtPerPerson < hungerLevel - 0.3 && (
+      {sqFtPerPerson < 1 && (
         <Box>
           <div>
             We recommend <strong>more</strong> pizza 📈
-          </div>
-        </Box>
-      )}
-
-      {sqFtPerPerson > hungerLevel + 0.3 && (
-        <Box>
-          <div>
-            We recommend <strong>less</strong> pizza ⬇️
-          </div>
-        </Box>
-      )}
-
-      {sqFtPerPerson - hungerLevel < 0.3 && (
-        <Box>
-          <div>
-            That's <strong>a good amount</strong> of pizza 👍
           </div>
         </Box>
       )}
