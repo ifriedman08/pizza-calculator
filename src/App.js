@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Box,
   Card,
@@ -125,18 +125,44 @@ const theme = createTheme({
           "& .MuiOutlinedInput-notchedOutline": {
             borderColor: "rgba(0, 240, 255, 0.55)",
           },
+          // The border gap is sized by a hidden copy of the label inside the
+          // legend; style it like the label (uppercase, bold, spaced; the
+          // label is scaled to 75% when on the border) so the gap fits.
+          "& .MuiOutlinedInput-notchedOutline legend": {
+            textTransform: "uppercase",
+            fontWeight: 700,
+            letterSpacing: "0.75px",
+          },
           "&:hover .MuiOutlinedInput-notchedOutline": {
             borderColor: NEON.cyan,
           },
-          // drop-shadow (unlike box-shadow) follows the drawn border, so the
-          // glow skips the notch where the label sits.
+          // Plain border on focus. A CSS filter glow here makes iOS Safari
+          // hide the label, leaving an empty gap in the border.
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
             borderColor: NEON.cyan,
-            filter: `drop-shadow(0 0 4px ${NEON.cyan})`,
+            borderWidth: 2,
           },
         },
-        input: { color: NEON.cyan, fontSize: 18 },
+        input: {
+          color: NEON.cyan,
+          fontSize: 18,
+          paddingLeft: 12,
+          paddingRight: 12,
+          // no up/down arrows: they take most of a narrow field
+          MozAppearance: "textfield",
+          "&::-webkit-inner-spin-button, &::-webkit-outer-spin-button": {
+            WebkitAppearance: "none",
+            margin: 0,
+          },
+        },
+        adornedEnd: { paddingRight: 10 },
       },
+    },
+    // Keep labels on the border at all times. When an empty field's label
+    // animates back inside, iOS Safari can fail to redraw the border and
+    // leaves an empty gap where the label was.
+    MuiTextField: {
+      defaultProps: { InputLabelProps: { shrink: true } },
     },
     MuiInputLabel: {
       styleOverrides: {
@@ -145,7 +171,6 @@ const theme = createTheme({
           letterSpacing: 1,
           color: "#e6d6ff",
           fontWeight: 700,
-          textShadow: `0 0 3px ${NEON.bg}, 0 0 6px ${NEON.bg}, 0 0 10px ${NEON.bg}`,
           "&.Mui-focused": { color: NEON.cyan },
         },
       },
@@ -217,26 +242,62 @@ const App = () => {
 
   const meterMax = THRESHOLDS.generous * 1.33;
 
-  // On phones, scroll the focused field to the top of the viewport so the
-  // results below it stay visible above the on-screen keyboard.
+  // On phones, the first time any field is focused (and the keyboard opens),
+  // scroll so the first field sits at the top of the screen. After that the
+  // page never scrolls on its own; the user is in charge.
   const [keyboardSpace, setKeyboardSpace] = useState(false);
+  const didInitialScroll = useRef(false);
   const isPhone = () =>
     typeof window.matchMedia === "function" &&
     window.matchMedia("(pointer: coarse) and (max-width: 599px)").matches;
 
+  // The on-screen keyboard shrinks the visual viewport; use that to tell
+  // whether it is actually open rather than assuming every focus opens it.
+  const keyboardOpen = () => {
+    const vv = window.visualViewport;
+    return !!vv && vv.height < document.documentElement.clientHeight * 0.8;
+  };
+  const initialScroll = () => {
+    if (didInitialScroll.current) return;
+    didInitialScroll.current = true;
+    const first = document.querySelector(".MuiTextField-root");
+    if (!first) return;
+    // let the extra bottom space render, then move the first field up
+    requestAnimationFrame(() => {
+      const top = first.getBoundingClientRect().top + window.scrollY - 16;
+      window.scrollTo({ top, behavior: "smooth" });
+    });
+  };
+
   const handleFocus = (e) => {
     if (!isPhone()) return;
+    // room below the form so the fields can sit high above the keyboard
     setKeyboardSpace(true);
-    const field = e.target.closest(".MuiTextField-root") || e.target;
-    // wait for the keyboard to finish opening (and the browser's own
-    // scroll-into-view) before positioning the field
-    setTimeout(() => {
-      const top = field.getBoundingClientRect().top + window.scrollY - 16;
-      window.scrollTo({ top, behavior: "smooth" });
-    }, 300);
+    if (didInitialScroll.current) return;
+
+    const vv = window.visualViewport;
+    if (keyboardOpen() || !vv) return initialScroll();
+
+    // wait for the keyboard to open; do nothing if it never does
+    const onResize = () => {
+      if (!keyboardOpen()) return;
+      cleanup();
+      // give the browser's own scroll-into-view a moment to settle
+      setTimeout(() => {
+        if (document.activeElement === e.target) initialScroll();
+      }, 150);
+    };
+    const cleanup = () => {
+      vv.removeEventListener("resize", onResize);
+      clearTimeout(giveUp);
+    };
+    const giveUp = setTimeout(cleanup, 1500);
+    vv.addEventListener("resize", onResize);
   };
-  const handleBlur = () => setKeyboardSpace(false);
-  const focusProps = { onFocus: handleFocus, onBlur: handleBlur };
+  // The extra bottom space is never removed once added: shrinking the page
+  // on blur clamps the scroll position (a jump) and makes Safari scroll
+  // again on the next focus.
+  const focusProps = { onFocus: handleFocus };
 
   return (
     <ThemeProvider theme={theme}>
@@ -289,18 +350,24 @@ const App = () => {
                 </Typography>
               </Box>
 
-              <Stack spacing={2.5}>
-                <TextField
-                  label="Number of people"
-                  type="number"
-                  value={ppl}
-                  onChange={(e) => setPpl(e.target.value)}
-                  {...focusProps}
-                  inputProps={{ min: 1, inputMode: "numeric", enterKeyHint: "done" }}
-                  autoFocus
-                  fullWidth
-                />
-                <Stack direction="row" spacing={2}>
+              <Stack direction="row" spacing={1.5}>
+                  <TextField
+                    label="People"
+                    placeholder="?"
+                    type="number"
+                    value={ppl}
+                    onChange={(e) => setPpl(e.target.value)}
+                    {...focusProps}
+                    inputProps={{
+                      min: 1,
+                      inputMode: "numeric",
+                      "aria-label": "Number of people",
+                    }}
+                    // desktop only: on phones, focusing on load jumps the page
+                    // without opening the keyboard
+                    autoFocus={!isPhone()}
+                    fullWidth
+                  />
                   <TextField
                     label="Pizzas"
                     type="number"
@@ -324,7 +391,6 @@ const App = () => {
                     }}
                     fullWidth
                   />
-                </Stack>
               </Stack>
 
               <Divider />
