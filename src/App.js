@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Card,
@@ -242,75 +242,22 @@ const App = () => {
 
   const meterMax = THRESHOLDS.generous * 1.33;
 
-  // On phones, the first time any field is focused (and the keyboard opens),
-  // scroll so the first field sits at the top of the screen. After that the
-  // page never scrolls on its own; the user is in charge.
-  const [keyboardSpace, setKeyboardSpace] = useState(false);
-  const didInitialScroll = useRef(false);
   const isPhone = () =>
     typeof window.matchMedia === "function" &&
     window.matchMedia("(pointer: coarse) and (max-width: 599px)").matches;
-
-  // The on-screen keyboard shrinks the visual viewport; use that to tell
-  // whether it is actually open rather than assuming every focus opens it.
-  const keyboardOpen = () => {
-    const vv = window.visualViewport;
-    return !!vv && vv.height < document.documentElement.clientHeight * 0.8;
-  };
-  const initialScroll = () => {
-    if (didInitialScroll.current) return;
-    didInitialScroll.current = true;
-    const first = document.querySelector(".MuiTextField-root");
-    if (!first) return;
-    // let the extra bottom space render, then move the first field up
-    requestAnimationFrame(() => {
-      const top = first.getBoundingClientRect().top + window.scrollY - 16;
-      window.scrollTo({ top, behavior: "smooth" });
-    });
-  };
-
-  const handleFocus = (e) => {
-    if (!isPhone()) return;
-    // room below the form so the fields can sit high above the keyboard
-    setKeyboardSpace(true);
-    if (didInitialScroll.current) return;
-
-    const vv = window.visualViewport;
-    if (keyboardOpen() || !vv) return initialScroll();
-
-    // wait for the keyboard to open; do nothing if it never does
-    const onResize = () => {
-      if (!keyboardOpen()) return;
-      cleanup();
-      // give the browser's own scroll-into-view a moment to settle
-      setTimeout(() => {
-        if (document.activeElement === e.target) initialScroll();
-      }, 150);
-    };
-    const cleanup = () => {
-      vv.removeEventListener("resize", onResize);
-      clearTimeout(giveUp);
-    };
-    const giveUp = setTimeout(cleanup, 1500);
-    vv.addEventListener("resize", onResize);
-  };
-  // The extra bottom space is never removed once added: shrinking the page
-  // on blur clamps the scroll position (a jump) and makes Safari scroll
-  // again on the next focus.
-  const focusProps = { onFocus: handleFocus };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box
         sx={{
-          minHeight: "100vh",
+          // Phones: no forced full height, so the page is no taller than its
+          // content and Safari has nothing to scroll when the keyboard opens.
+          minHeight: { xs: 0, sm: "100vh" },
           display: "flex",
           justifyContent: "center",
           alignItems: { xs: "flex-start", sm: "center" },
           p: 2,
-          // extra room at the bottom so a field can scroll to the very top
-          pb: keyboardSpace ? "70vh" : 2,
         }}
       >
         <Card elevation={3} sx={{ width: "100%", maxWidth: 440 }}>
@@ -357,7 +304,6 @@ const App = () => {
                     type="number"
                     value={ppl}
                     onChange={(e) => setPpl(e.target.value)}
-                    {...focusProps}
                     inputProps={{
                       min: 1,
                       inputMode: "numeric",
@@ -373,7 +319,6 @@ const App = () => {
                     type="number"
                     value={numberOfPizzas}
                     onChange={(e) => setNumberOfPizzas(e.target.value)}
-                    {...focusProps}
                     inputProps={{ min: 1, inputMode: "numeric" }}
                     fullWidth
                   />
@@ -382,7 +327,6 @@ const App = () => {
                     type="number"
                     value={diameter}
                     onChange={(e) => setDiameter(e.target.value)}
-                    {...focusProps}
                     inputProps={{ min: 1, step: 0.5, inputMode: "decimal" }}
                     InputProps={{
                       endAdornment: (
